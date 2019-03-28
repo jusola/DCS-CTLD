@@ -47,7 +47,7 @@ ctld.maximumMoveDistance = 2000 -- max distance for troops to move from drop poi
 
 ctld.minimumDeployDistance = 1000 -- minimum distance from a friendly pickup zone where you can deploy a crate
 
-ctld.numberOfTroops = 10 -- default number of troops to load on a transport heli or C-130 
+ctld.numberOfTroops = 10 -- default number of troops to load on a transport heli or C-130
 							-- also works as maximum size of group that'll fit into a helicopter unless overridden
 ctld.enableFastRopeInsertion = true -- allows you to drop troops by fast rope
 ctld.fastRopeMaximumHeight = 18.28 -- in meters which is 60 ft max fast rope (not rappell) safe height
@@ -1394,51 +1394,51 @@ function ctld.spawnCrateStatic(_country, _unitId, _point, _name, _weight,_side)
                 --            ["cargoDisplayName"] = "cargo123",
                 --            ["CargoDisplayName"] = "cargo123",
             }
-        
+
 --[[ Placeholder for different type of cargo containers. Let's say pipes and trunks, fuel for FOB building
                         ["shape_name"] = "ab-212_cargo",
 			["type"] = "uh1h_cargo" --new type for the container previously used
-			
+
 			["shape_name"] = "ammo_box_cargo",
                         ["type"] = "ammo_cargo",
-			
+
 			["shape_name"] = "barrels_cargo",
                         ["type"] = "barrels_cargo",
 
                         ["shape_name"] = "bw_container_cargo",
                         ["type"] = "container_cargo",
-			
+
                         ["shape_name"] = "f_bar_cargo",
                         ["type"] = "f_bar_cargo",
-			
+
 			["shape_name"] = "fueltank_cargo",
                         ["type"] = "fueltank_cargo",
-			
+
 			["shape_name"] = "iso_container_cargo",
 			["type"] = "iso_container",
-			
+
 			["shape_name"] = "iso_container_small_cargo",
 			["type"] = "iso_container_small",
-			
+
 			["shape_name"] = "oiltank_cargo",
                         ["type"] = "oiltank_cargo",
-                        
+
 			["shape_name"] = "pipes_big_cargo",
-                        ["type"] = "pipes_big_cargo",			
-			
+                        ["type"] = "pipes_big_cargo",
+
 			["shape_name"] = "pipes_small_cargo",
 			["type"] = "pipes_small_cargo",
-			
+
 			["shape_name"] = "tetrapod_cargo",
 			["type"] = "tetrapod_cargo",
-			
+
 			["shape_name"] = "trunks_long_cargo",
 			["type"] = "trunks_long_cargo",
-			
+
 			["shape_name"] = "trunks_small_cargo",
 			["type"] = "trunks_small_cargo",
 ]]--
-	else	
+	else
             _crate = {
                 ["shape_name"] = "GeneratorF",
                 ["type"] = "GeneratorF",
@@ -5113,6 +5113,13 @@ function ctld.notifyCoalition(_message, _displayFor, _side)
     trigger.action.outSoundForCoalition(_side, "radiobeep.ogg")
 end
 
+function ctld.notifyGroup(_message, _displayFor, _groupId)
+
+
+    trigger.action.outTextForGroup(_groupId, _message, _displayFor)
+    trigger.action.outSoundForGroup(_groupId, "radiobeep.ogg")
+end
+
 function ctld.createSmokeMarker(_enemyUnit, _colour)
 
     --recreate in 5 mins
@@ -5459,9 +5466,20 @@ function ctld.getJTACStatus(_args)
 
     local _side = _playerUnit:getCoalition()
 
+    local _group = _playerUnit:getGroup()
+    local _groupID = _group:getID()
+
+    local _playerUnitType = _playerUnit:getTypeName()
+
     local _jtacGroupName = nil
     local _jtacUnit = nil
 
+    local _formatDMS = false
+    if _playerUnitType == "M-2000C" or _playerUnitType == "Ka-50" or _playerUnitType == "F-14B" then -- check for planes using DDM for coordinates
+      _formatDMS = false
+    else
+      _formatDMS = true
+    end
     local _message = "JTAC STATUS: \n\n"
 
     for _jtacGroupName, _jtacDetails in pairs(ctld.jtacUnits) do
@@ -5480,7 +5498,7 @@ function ctld.getJTACStatus(_args)
             end
 
             if _enemyUnit ~= nil and _enemyUnit:getLife() > 0 and _enemyUnit:isActive() == true then
-                _message = _message .. "" .. _jtacGroupName .. " targeting " .. _enemyUnit:getTypeName() .. " CODE: " .. _laserCode .. ctld.getPositionString(_enemyUnit) .. "\n"
+                _message = _message .. "" .. _jtacGroupName .. " targeting " .. _enemyUnit:getTypeName() .. " CODE: " .. _laserCode .. ctld.getPositionString(_enemyUnit, _formatDMS) .. "\n"
 
                 local _list = ctld.listNearbyEnemies(_jtacUnit)
 
@@ -5494,7 +5512,7 @@ function ctld.getJTACStatus(_args)
                 end
 
             else
-                _message = _message .. "" .. _jtacGroupName .. " searching for targets" .. ctld.getPositionString(_jtacUnit) .. "\n"
+                _message = _message .. "" .. _jtacGroupName .. " searching for targets" .. ctld.getPositionString(_jtacUnit, _formatDMS) .. "\n"
             end
         end
     end
@@ -5747,15 +5765,18 @@ function ctld.generateFMFrequencies()
     end
 end
 
-function ctld.getPositionString(_unit)
+function ctld.getPositionString(_unit, _formatDMS)
 
     if ctld.JTAC_location == false then
         return ""
     end
 
     local _lat, _lon = coord.LOtoLL(_unit:getPosition().p)
-
-    local _latLngStr = mist.tostringLL(_lat, _lon, 3, ctld.location_DMS)
+    local _decimals = 3
+    if _formatDMS then
+      _decimals = 0
+    end
+    local _latLngStr = mist.tostringLL(_lat, _lon, _decimals, _formatDMS)
 
     local _mgrsString = mist.tostringMGRS(coord.LLtoMGRS(coord.LOtoLL(_unit:getPosition().p)), 5)
 
